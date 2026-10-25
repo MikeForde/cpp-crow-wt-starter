@@ -1,0 +1,16 @@
+{
+  "name": "C++ Crow + Wt",
+  "build": { "dockerfile": "Dockerfile" },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "forwardPorts": [8080, 18080],
+  "portsAttributes": {
+    "8080": { "label": "Wt UI", "onAutoForward": "openBrowser" },
+    "18080": { "label": "Crow API", "onAutoForward": "notify" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-vscode.cpptools", "ms-vscode.cmake-tools"]
+    }
+  }
+}
