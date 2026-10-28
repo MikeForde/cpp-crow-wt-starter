@@ -24,8 +24,9 @@ int main()
         response["message"] = message;
         return response; });
 
-    CROW_ROUTE(app, "/api/tasks").methods(crow::HTTPMethod::GET)([&taskRepository]()
-                                                                 {
+    CROW_ROUTE(app, "/api/tasks")
+        .methods(crow::HTTPMethod::GET)([&taskRepository]()
+                                        {
 
         const auto tasks = taskRepository.getAllTasks();
 
@@ -80,6 +81,65 @@ int main()
 
     crow::response httpResponse(
         201, response.dump()
+    );
+
+    httpResponse.set_header(
+        "Content-Type", "application/json"
+    );
+
+    return httpResponse; });
+
+    CROW_ROUTE(app, "/api/tasks/<int>")
+        .methods(crow::HTTPMethod::PATCH)([&taskRepository](const crow::request &req, int id)
+                                          {
+
+    // Validate the task ID
+    if (id <= 0) {
+        return crow::response(400, "Invalid task ID");
+    }
+
+    // Parse the JSON request body
+    auto body = crow::json::load(req.body);
+
+    if (!body ||
+        body.t() != crow::json::type::Object ||
+        !body.has("completed")) {
+
+        return crow::response(
+            400, "A boolean 'completed' field is required"
+        );
+    }
+
+    // Ensure the field contains a JSON boolean
+    const auto valueType = body["completed"].t();
+
+    if (valueType != crow::json::type::True &&
+        valueType != crow::json::type::False) {
+
+        return crow::response(
+            400, "'completed' must be true or false"
+        );
+    }
+
+    const bool completed = body["completed"].b();
+
+    // Update the task
+    std::optional<Task> updated =
+        taskRepository.updateTask(id, completed);
+
+    if (!updated) {
+        return crow::response(404, "Task not found");
+    }
+
+    // Construct the JSON response
+    crow::json::wvalue response;
+
+    response["id"] = updated->id;
+    response["title"] = updated->title;
+    response["completed"] = updated->completed;
+
+    crow::response httpResponse(
+        200, response.dump()
     );
 
     httpResponse.set_header(

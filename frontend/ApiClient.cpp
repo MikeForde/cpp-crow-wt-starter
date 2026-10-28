@@ -6,6 +6,7 @@
 #include <Wt/Json/Array.h>
 #include <Wt/Json/Serializer.h>
 #include <Wt/Http/Message.h>
+#include <Wt/WString.h>
 
 #include <chrono>
 #include <memory>
