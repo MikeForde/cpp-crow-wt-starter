@@ -18,6 +18,7 @@ find_package(Wt REQUIRED COMPONENTS Wt HTTP)
 add_executable(crow_api 
     backend/main.cpp
     backend/GreetingService.cpp
+    backend/TaskRepository.cpp
 )
 target_link_libraries(crow_api PRIVATE Crow::Crow)
 

@@ -1,33 +1,49 @@
 #pragma once
+#include "Task.h"
 
 #include <Wt/WObject.h>
 #include <Wt/Http/Client.h>
 
 #include <functional>
 #include <string>
+#include <vector>
 
 class ApiClient : public Wt::WObject
 {
 public:
-    using GreetingCallback = std::function<void(const std::string& message, const std::string& error)>;
+    using GreetingCallback = std::function<void(const std::string &message, const std::string &error)>;
 
     explicit ApiClient(std::string baseUrl);
 
-    bool getGreeting(const std::string& name, GreetingCallback callback);
+    bool getGreeting(const std::string &name, GreetingCallback callback);
+
+    using TasksCallback = std::function<
+        void(const std::vector<Task> &tasks,
+             const std::string &error)>;
+
+    bool getTasks(TasksCallback callback);
 
 private:
     std::string baseUrl_;
 
-    Wt::Http::Client* client_ = nullptr;
+    Wt::Http::Client *client_ = nullptr;
+    Wt::Http::Client *taskClient_ = nullptr;
 
     GreetingCallback callback_;
+    TasksCallback tasksCallback_;
 
     bool busy_ = false;
+    bool tasksBusy_ = false;
 
     void handleResponse(
         bool failed,
         int status,
-        const std::string& body,
-        const std::string& error
-    );
+        const std::string &body,
+        const std::string &error);
+
+    void handleTasksResponse(
+        bool failed,
+        int status,
+        const std::string &body,
+        const std::string &error);
 };
