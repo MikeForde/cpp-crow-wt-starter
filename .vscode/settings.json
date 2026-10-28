@@ -1,0 +1,26 @@
+{
+    "terminalSessions.instanceProfiles": [
+        {
+            "name": "build",
+            "cwd": "/workspace",
+            "commands": [
+                "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug",
+                "cmake --build build --parallel 2"
+            ]
+        },
+        {
+            "name": "run backend",
+            "cwd": "/workspace",
+            "commands": [
+                "./build/crow_api"
+            ]
+        },
+        {
+            "name": "run frontend",
+            "cwd": "/workspace",
+            "commands": [
+                "./build/wt_ui \\     --docroot . \\     --http-address 0.0.0.0 \\     --http-port 8080"
+            ]
+        }
+    ]
+}

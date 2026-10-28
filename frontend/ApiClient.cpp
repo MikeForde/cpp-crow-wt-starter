@@ -4,6 +4,8 @@
 #include <Wt/Json/Parser.h>
 #include <Wt/Utils.h>
 #include <Wt/Json/Array.h>
+#include <Wt/Json/Serializer.h>
+#include <Wt/Http/Message.h>
 
 #include <chrono>
 #include <memory>
@@ -18,12 +20,15 @@ ApiClient::ApiClient(std::string baseUrl)
 
     client_ = addChild(std::make_unique<Wt::Http::Client>());
     taskClient_ = addChild(std::make_unique<Wt::Http::Client>());
+    createClient_ = addChild(std::make_unique<Wt::Http::Client>());
 
     client_->setTimeout(std::chrono::seconds(5));
     taskClient_->setTimeout(std::chrono::seconds{5});
+    createClient_->setMaximumResponseSize(16 * 1024);
 
     client_->setMaximumResponseSize(16 * 1024);
     taskClient_->setMaximumResponseSize(256 * 1024);
+    createClient_->setTimeout(std::chrono::seconds{5});
 
     client_->done().connect(
         [this](boost::system::error_code error, const Wt::Http::Message &response)
@@ -42,6 +47,16 @@ ApiClient::ApiClient(std::string baseUrl)
                 static_cast<bool>(error),
                 response.status(),
                 response.body(),
+                error.message());
+        });
+
+    createClient_->done().connect(
+        [this](boost::system::error_code error,
+               const Wt::Http::Message &response)
+        {
+            handleCreateResponse(
+                static_cast<bool>(error),
+                response.status(),
                 error.message());
         });
 }
@@ -231,5 +246,91 @@ void ApiClient::handleTasksResponse(
     if (callback)
     {
         callback(tasks, failure);
+    }
+}
+
+bool ApiClient::createTask(
+    const std::string &title,
+    CreateTaskCallback callback)
+{
+    if (createBusy_)
+    {
+        return false;
+    }
+
+    if (title.empty() || title.size() > 200)
+    {
+        throw std::invalid_argument(
+            "Task title must contain 1 to 200 bytes");
+    }
+
+    // Construct the JSON request
+    Wt::Json::Object json;
+    json["title"] = Wt::WString::fromUTF8(title);
+
+    const std::string body = Wt::Json::serialize(json);
+
+    // Construct the HTTP message
+    Wt::Http::Message request;
+
+    request.setHeader(
+        "Content-Type",
+        "application/json");
+
+    request.addBodyText(body);
+
+    createBusy_ = true;
+    createCallback_ = std::move(callback);
+
+    try
+    {
+        const bool started = createClient_->post(
+            baseUrl_ + "/api/tasks",
+            request);
+
+        if (!started)
+        {
+            createBusy_ = false;
+            createCallback_ = {};
+            return false;
+        }
+    }
+    catch (...)
+    {
+        createBusy_ = false;
+        createCallback_ = {};
+        throw;
+    }
+
+    return true;
+}
+
+void ApiClient::handleCreateResponse(
+    bool failed,
+    int status,
+    const std::string &error)
+{
+    std::string failure;
+
+    if (failed)
+    {
+        failure = error.empty()
+                      ? "Network request failed"
+                      : error;
+    }
+    else if (status != 201)
+    {
+        failure = "Crow returned HTTP " +
+                  std::to_string(status);
+    }
+
+    createBusy_ = false;
+
+    auto callback = std::move(createCallback_);
+    createCallback_ = {};
+
+    if (callback)
+    {
+        callback(failure);
     }
 }

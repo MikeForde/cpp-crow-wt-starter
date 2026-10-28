@@ -23,17 +23,27 @@ public:
 
     bool getTasks(TasksCallback callback);
 
+    using CreateTaskCallback = std::function<
+        void(const std::string &error)>;
+
+    bool createTask(
+        const std::string &title,
+        CreateTaskCallback callback);
+
 private:
     std::string baseUrl_;
 
     Wt::Http::Client *client_ = nullptr;
     Wt::Http::Client *taskClient_ = nullptr;
+    Wt::Http::Client *createClient_ = nullptr;
 
     GreetingCallback callback_;
     TasksCallback tasksCallback_;
+    CreateTaskCallback createCallback_;
 
     bool busy_ = false;
     bool tasksBusy_ = false;
+    bool createBusy_ = false;
 
     void handleResponse(
         bool failed,
@@ -45,5 +55,10 @@ private:
         bool failed,
         int status,
         const std::string &body,
+        const std::string &error);
+
+    void handleCreateResponse(
+        bool failed,
+        int status,
         const std::string &error);
 };

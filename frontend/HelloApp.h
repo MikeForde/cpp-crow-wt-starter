@@ -21,6 +21,7 @@ private:
     void handleGreeting();
     void refreshTasks();
     void displayTasks(const std::vector<Task> &tasks);
+    void addTask();
 
     ApiClient *apiClient_ = nullptr;
 
@@ -30,4 +31,6 @@ private:
     Wt::WPushButton *refreshButton_ = nullptr;
     Wt::WTable *taskTable_ = nullptr;
     Wt::WText *taskStatus_ = nullptr;
+    Wt::WLineEdit *taskInput_ = nullptr;
+    Wt::WPushButton *addTaskButton_ = nullptr;
 };

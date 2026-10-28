@@ -47,6 +47,20 @@ HelloApp::HelloApp(const Wt::WEnvironment &env) : Wt::WApplication(env)
         std::make_unique<Wt::WText>(
             "<h3>Task Manager</h3>"));
 
+    // Task title input
+    taskInput_ = root()->addWidget(
+        std::make_unique<Wt::WLineEdit>());
+
+    taskInput_->setPlaceholderText("Enter a new task");
+
+    // Add Task button
+    addTaskButton_ = root()->addWidget(
+        std::make_unique<Wt::WPushButton>("Add Task"));
+
+    // Connect the button to the handler
+    addTaskButton_->clicked().connect(
+        this, &HelloApp::addTask);
+
     refreshButton_ = root()->addWidget(
         std::make_unique<Wt::WPushButton>("Refresh Tasks"));
 
@@ -185,5 +199,68 @@ void HelloApp::displayTasks(
                 task.completed ? "Completed" : "Pending"));
 
         ++row;
+    }
+}
+
+void HelloApp::addTask()
+{
+
+    // Read the title from the UI
+    const std::string title =
+        taskInput_->text().toUTF8();
+
+    if (title.empty() || title.size() > 200)
+    {
+        taskStatus_->setText(
+            "Task title must contain 1 to 200 bytes.");
+        return;
+    }
+
+    // Prevent duplicate submissions
+    addTaskButton_->setDisabled(true);
+    taskStatus_->setText("Creating task...");
+
+    try
+    {
+        const bool started = apiClient_->createTask(
+            title,
+
+            [this](const std::string &error)
+            {
+                addTaskButton_->setDisabled(false);
+
+                if (!error.empty())
+                {
+                    taskStatus_->setText(
+                        Wt::WString::fromUTF8(
+                            "Failed to create task: " + error));
+                }
+                else
+                {
+                    // Clear input after successful creation
+                    taskInput_->setText("");
+
+                    taskStatus_->setText("Task created.");
+
+                    // Retrieve the updated task list
+                    refreshTasks();
+                }
+
+                triggerUpdate();
+            });
+
+        if (!started)
+        {
+            addTaskButton_->setDisabled(false);
+            taskStatus_->setText(
+                "Could not start task creation request.");
+        }
+    }
+    catch (const std::exception &e)
+    {
+        addTaskButton_->setDisabled(false);
+        taskStatus_->setText(
+            Wt::WString::fromUTF8(
+                std::string("Error: ") + e.what()));
     }
 }
