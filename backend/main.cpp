@@ -52,101 +52,125 @@ int main()
         .methods(crow::HTTPMethod::POST)([&taskRepository](const crow::request &req)
                                          {
 
-    auto body = crow::json::load(req.body);
+        auto body = crow::json::load(req.body);
 
-    if (!body ||
-        !body.has("title") ||
-        body["title"].t() != crow::json::type::String) {
+        if (!body ||
+            !body.has("title") ||
+            body["title"].t() != crow::json::type::String) {
 
-        return crow::response(
-            400, "A string title is required"
+            return crow::response(
+                400, "A string title is required"
+            );
+        }
+
+        std::string title = body["title"].s();
+
+        if (title.empty() || title.size() > 200) {
+            return crow::response(
+                400, "Title must be between 1 and 200 bytes"
+            );
+        }
+
+        Task task = taskRepository.addTask(title);
+
+        crow::json::wvalue response;
+
+        response["id"] = task.id;
+        response["title"] = task.title;
+        response["completed"] = task.completed;
+
+        crow::response httpResponse(
+            201, response.dump()
         );
-    }
 
-    std::string title = body["title"].s();
-
-    if (title.empty() || title.size() > 200) {
-        return crow::response(
-            400, "Title must be between 1 and 200 bytes"
+        httpResponse.set_header(
+            "Content-Type", "application/json"
         );
-    }
 
-    Task task = taskRepository.addTask(title);
-
-    crow::json::wvalue response;
-
-    response["id"] = task.id;
-    response["title"] = task.title;
-    response["completed"] = task.completed;
-
-    crow::response httpResponse(
-        201, response.dump()
-    );
-
-    httpResponse.set_header(
-        "Content-Type", "application/json"
-    );
-
-    return httpResponse; });
+        return httpResponse; });
 
     CROW_ROUTE(app, "/api/tasks/<int>")
         .methods(crow::HTTPMethod::PATCH)([&taskRepository](const crow::request &req, int id)
                                           {
 
-    // Validate the task ID
-    if (id <= 0) {
-        return crow::response(400, "Invalid task ID");
-    }
+        // Validate the task ID
+        if (id <= 0) {
+            return crow::response(400, "Invalid task ID");
+        }
 
-    // Parse the JSON request body
-    auto body = crow::json::load(req.body);
+        // Parse the JSON request body
+        auto body = crow::json::load(req.body);
 
-    if (!body ||
-        body.t() != crow::json::type::Object ||
-        !body.has("completed")) {
+        if (!body ||
+            body.t() != crow::json::type::Object ||
+            !body.has("completed")) {
 
-        return crow::response(
-            400, "A boolean 'completed' field is required"
+            return crow::response(
+                400, "A boolean 'completed' field is required"
+            );
+        }
+
+        // Ensure the field contains a JSON boolean
+        const auto valueType = body["completed"].t();
+
+        if (valueType != crow::json::type::True &&
+            valueType != crow::json::type::False) {
+
+            return crow::response(
+                400, "'completed' must be true or false"
+            );
+        }
+
+        const bool completed = body["completed"].b();
+
+        // Update the task
+        std::optional<Task> updated =
+            taskRepository.updateTask(id, completed);
+
+        if (!updated) {
+            return crow::response(404, "Task not found");
+        }
+
+        // Construct the JSON response
+        crow::json::wvalue response;
+
+        response["id"] = updated->id;
+        response["title"] = updated->title;
+        response["completed"] = updated->completed;
+
+        crow::response httpResponse(
+            200, response.dump()
         );
-    }
 
-    // Ensure the field contains a JSON boolean
-    const auto valueType = body["completed"].t();
-
-    if (valueType != crow::json::type::True &&
-        valueType != crow::json::type::False) {
-
-        return crow::response(
-            400, "'completed' must be true or false"
+        httpResponse.set_header(
+            "Content-Type", "application/json"
         );
-    }
 
-    const bool completed = body["completed"].b();
 
-    // Update the task
-    std::optional<Task> updated =
-        taskRepository.updateTask(id, completed);
+        return httpResponse; });
 
-    if (!updated) {
-        return crow::response(404, "Task not found");
-    }
+    CROW_ROUTE(app, "/api/tasks/<int>")
+        .methods(crow::HTTPMethod::DELETE)([&taskRepository](int id)
+                                           {
 
-    // Construct the JSON response
-    crow::json::wvalue response;
+        // Validate the task ID
+        if (id <= 0) {
+            return crow::response(
+                400, "Invalid task ID"
+            );
+        }
 
-    response["id"] = updated->id;
-    response["title"] = updated->title;
-    response["completed"] = updated->completed;
+        // Attempt to delete the task
+        const bool deleted = taskRepository.deleteTask(id);
 
-    crow::response httpResponse(
-        200, response.dump()
-    );
+        if (!deleted) {
+            return crow::response(
+                404, "Task not found"
+            );
+        }
 
-    httpResponse.set_header(
-        "Content-Type", "application/json"
-    );
-
-    return httpResponse; });
+        // Successful deletion: no response body
+        return crow::response(204); });
 
     app.bindaddr("0.0.0.0").port(18080).multithreaded().run();
 }

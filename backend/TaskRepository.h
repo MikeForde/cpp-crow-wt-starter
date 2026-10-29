@@ -18,6 +18,8 @@ public:
         int id,
         bool completed);
 
+    bool deleteTask(int id);
+
 private:
     mutable std::mutex mutex_;
 

@@ -54,3 +54,27 @@ std::optional<Task> TaskRepository::updateTask(
     // Return a copy of the updated task
     return *it;
 }
+
+bool TaskRepository::deleteTask(int id) {
+
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Move tasks matching the ID to the end
+    auto newEnd = std::remove_if(
+        tasks_.begin(),
+        tasks_.end(),
+        [id](const Task& task) {
+            return task.id == id;
+        }
+    );
+
+    // No matching task found
+    if (newEnd == tasks_.end()) {
+        return false;
+    }
+
+    // Erase the unwanted elements
+    tasks_.erase(newEnd, tasks_.end());
+
+    return true;
+}
