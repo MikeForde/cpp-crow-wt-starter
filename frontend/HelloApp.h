@@ -22,6 +22,11 @@ private:
     void refreshTasks();
     void displayTasks(const std::vector<Task> &tasks);
     void addTask();
+    void setTaskCompleted(int id, bool completed);
+    void removeTask(int id);
+    void finishTaskMutation(const std::string& error);
+
+    bool taskMutationInProgress_ = false;
 
     ApiClient *apiClient_ = nullptr;
 

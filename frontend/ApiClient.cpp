@@ -22,14 +22,17 @@ ApiClient::ApiClient(std::string baseUrl)
     client_ = addChild(std::make_unique<Wt::Http::Client>());
     taskClient_ = addChild(std::make_unique<Wt::Http::Client>());
     createClient_ = addChild(std::make_unique<Wt::Http::Client>());
+    mutationClient_ = addChild(std::make_unique<Wt::Http::Client>());
 
     client_->setTimeout(std::chrono::seconds(5));
     taskClient_->setTimeout(std::chrono::seconds{5});
-    createClient_->setMaximumResponseSize(16 * 1024);
+    createClient_->setTimeout(std::chrono::seconds{5});
+    mutationClient_->setTimeout(std::chrono::seconds{5});
 
     client_->setMaximumResponseSize(16 * 1024);
     taskClient_->setMaximumResponseSize(256 * 1024);
-    createClient_->setTimeout(std::chrono::seconds{5});
+    createClient_->setMaximumResponseSize(16 * 1024);
+    mutationClient_->setMaximumResponseSize(16 * 1024);
 
     client_->done().connect(
         [this](boost::system::error_code error, const Wt::Http::Message &response)
@@ -56,6 +59,16 @@ ApiClient::ApiClient(std::string baseUrl)
                const Wt::Http::Message &response)
         {
             handleCreateResponse(
+                static_cast<bool>(error),
+                response.status(),
+                error.message());
+        });
+
+    mutationClient_->done().connect(
+        [this](boost::system::error_code error,
+               const Wt::Http::Message &response)
+        {
+            handleMutationResponse(
                 static_cast<bool>(error),
                 response.status(),
                 error.message());
@@ -329,6 +342,137 @@ void ApiClient::handleCreateResponse(
 
     auto callback = std::move(createCallback_);
     createCallback_ = {};
+
+    if (callback)
+    {
+        callback(failure);
+    }
+}
+
+bool ApiClient::updateTask(
+    int id,
+    bool completed,
+    TaskMutationCallback callback)
+{
+    if (mutationBusy_)
+    {
+        return false;
+    }
+
+    if (id <= 0)
+    {
+        throw std::invalid_argument("Invalid task ID");
+    }
+
+    // Construct the JSON body
+    Wt::Json::Object json;
+    json["completed"] = completed;
+
+    const std::string body = Wt::Json::serialize(json);
+
+    // Construct the HTTP request
+    Wt::Http::Message request;
+
+    request.setHeader(
+        "Content-Type",
+        "application/json");
+
+    request.addBodyText(body);
+
+    mutationBusy_ = true;
+    expectedStatus_ = 200;
+    mutationCallback_ = std::move(callback);
+
+    try
+    {
+        const bool started = mutationClient_->patch(
+            baseUrl_ + "/api/tasks/" + std::to_string(id),
+            request);
+
+        if (!started)
+        {
+            mutationBusy_ = false;
+            mutationCallback_ = {};
+            return false;
+        }
+    }
+    catch (...)
+    {
+        mutationBusy_ = false;
+        mutationCallback_ = {};
+        throw;
+    }
+
+    return true;
+}
+
+bool ApiClient::deleteTask(
+    int id,
+    TaskMutationCallback callback)
+{
+    if (mutationBusy_)
+    {
+        return false;
+    }
+
+    if (id <= 0)
+    {
+        throw std::invalid_argument("Invalid task ID");
+    }
+
+    // DELETE requires no request body
+    Wt::Http::Message request;
+
+    mutationBusy_ = true;
+    expectedStatus_ = 204;
+    mutationCallback_ = std::move(callback);
+
+    try
+    {
+        const bool started = mutationClient_->deleteRequest(
+            baseUrl_ + "/api/tasks/" + std::to_string(id),
+            request);
+
+        if (!started)
+        {
+            mutationBusy_ = false;
+            mutationCallback_ = {};
+            return false;
+        }
+    }
+    catch (...)
+    {
+        mutationBusy_ = false;
+        mutationCallback_ = {};
+        throw;
+    }
+
+    return true;
+}
+
+void ApiClient::handleMutationResponse(
+    bool failed,
+    int status,
+    const std::string &error)
+{
+    std::string failure;
+
+    if (failed)
+    {
+        failure = error.empty()
+                      ? "Network request failed"
+                      : error;
+    }
+    else if (status != expectedStatus_)
+    {
+        failure = "Crow returned HTTP " +
+                  std::to_string(status);
+    }
+
+    mutationBusy_ = false;
+
+    auto callback = std::move(mutationCallback_);
+    mutationCallback_ = {};
 
     if (callback)
     {

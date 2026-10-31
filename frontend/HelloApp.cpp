@@ -4,6 +4,7 @@
 #include <Wt/WString.h>
 #include <Wt/WBreak.h>
 #include <Wt/WTableCell.h>
+#include <Wt/WCheckBox.h>
 
 #include <memory>
 #include <exception>
@@ -174,7 +175,10 @@ void HelloApp::displayTasks(
         std::make_unique<Wt::WText>("Title"));
 
     taskTable_->elementAt(0, 2)->addWidget(
-        std::make_unique<Wt::WText>("Status"));
+        std::make_unique<Wt::WText>("Completed"));
+
+    taskTable_->elementAt(0, 3)->addWidget(
+        std::make_unique<Wt::WText>("Action"));
 
     taskTable_->setHeaderCount(1);
 
@@ -194,9 +198,34 @@ void HelloApp::displayTasks(
 
         titleWidget->setTextFormat(Wt::TextFormat::Plain);
 
-        taskTable_->elementAt(row, 2)->addWidget(
-            std::make_unique<Wt::WText>(
-                task.completed ? "Completed" : "Pending"));
+        // Column 2: Completion checkbox
+        auto checkbox =
+            taskTable_->elementAt(row, 2)->addWidget(
+                std::make_unique<Wt::WCheckBox>());
+
+        checkbox->setChecked(task.completed);
+
+        // Capture the ID by value, not the task reference
+        const int taskId = task.id;
+
+        checkbox->changed().connect(
+            [this, taskId, checkbox]()
+            {
+                setTaskCompleted(
+                    taskId,
+                    checkbox->isChecked());
+            });
+
+        // Column 3: Delete button
+        auto deleteButton =
+            taskTable_->elementAt(row, 3)->addWidget(
+                std::make_unique<Wt::WPushButton>("Delete"));
+
+        deleteButton->clicked().connect(
+            [this, taskId]()
+            {
+                removeTask(taskId);
+            });
 
         ++row;
     }
@@ -263,4 +292,108 @@ void HelloApp::addTask()
             Wt::WString::fromUTF8(
                 std::string("Error: ") + e.what()));
     }
+}
+
+void HelloApp::setTaskCompleted(
+    int id,
+    bool completed)
+{
+    if (taskMutationInProgress_)
+    {
+        taskStatus_->setText(
+            "Another task operation is in progress.");
+        refreshTasks();
+        return;
+    }
+
+    taskMutationInProgress_ = true;
+    taskStatus_->setText("Updating task...");
+
+    try
+    {
+        const bool started = apiClient_->updateTask(
+            id,
+            completed,
+            [this](const std::string &error)
+            {
+                finishTaskMutation(error);
+            });
+
+        if (!started)
+        {
+            taskMutationInProgress_ = false;
+            taskStatus_->setText(
+                "Could not start task update.");
+            refreshTasks();
+        }
+    }
+    catch (const std::exception &e)
+    {
+        taskMutationInProgress_ = false;
+        taskStatus_->setText(
+            Wt::WString::fromUTF8(e.what()));
+        refreshTasks();
+    }
+}
+
+void HelloApp::removeTask(int id)
+{
+
+    if (taskMutationInProgress_)
+    {
+        taskStatus_->setText(
+            "Another task operation is in progress.");
+        return;
+    }
+
+    taskMutationInProgress_ = true;
+    taskStatus_->setText("Deleting task...");
+
+    try
+    {
+        const bool started = apiClient_->deleteTask(
+            id,
+            [this](const std::string &error)
+            {
+                finishTaskMutation(error);
+            });
+
+        if (!started)
+        {
+            taskMutationInProgress_ = false;
+            taskStatus_->setText(
+                "Could not start deletion.");
+        }
+    }
+    catch (const std::exception &e)
+    {
+        taskMutationInProgress_ = false;
+        taskStatus_->setText(
+            Wt::WString::fromUTF8(e.what()));
+    }
+}
+
+void HelloApp::finishTaskMutation(
+    const std::string &error)
+{
+    taskMutationInProgress_ = false;
+
+    if (!error.empty())
+    {
+        taskStatus_->setText(
+            Wt::WString::fromUTF8(
+                "Task operation failed: " + error));
+
+        // Reload the authoritative state from Crow
+        refreshTasks();
+    }
+    else
+    {
+        taskStatus_->setText("Task updated.");
+
+        // Retrieve the modified collection
+        refreshTasks();
+    }
+
+    triggerUpdate();
 }

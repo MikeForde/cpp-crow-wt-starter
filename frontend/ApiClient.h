@@ -30,20 +30,35 @@ public:
         const std::string &title,
         CreateTaskCallback callback);
 
+    using TaskMutationCallback = std::function<
+        void(const std::string &error)>;
+
+    bool updateTask(
+        int id,
+        bool completed,
+        TaskMutationCallback callback);
+
+    bool deleteTask(
+        int id,
+        TaskMutationCallback callback);
+
 private:
     std::string baseUrl_;
 
     Wt::Http::Client *client_ = nullptr;
     Wt::Http::Client *taskClient_ = nullptr;
     Wt::Http::Client *createClient_ = nullptr;
+    Wt::Http::Client *mutationClient_ = nullptr;
 
     GreetingCallback callback_;
     TasksCallback tasksCallback_;
     CreateTaskCallback createCallback_;
+    TaskMutationCallback mutationCallback_;
 
     bool busy_ = false;
     bool tasksBusy_ = false;
     bool createBusy_ = false;
+    bool mutationBusy_ = false;
 
     void handleResponse(
         bool failed,
@@ -58,6 +73,13 @@ private:
         const std::string &error);
 
     void handleCreateResponse(
+        bool failed,
+        int status,
+        const std::string &error);
+
+    int expectedStatus_ = 0;
+
+    void handleMutationResponse(
         bool failed,
         int status,
         const std::string &error);
