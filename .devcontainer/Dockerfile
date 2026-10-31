@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     libboost-all-dev \
     libcurl4-openssl-dev \
+    libsqlite3-dev \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Build and install Wt from source
