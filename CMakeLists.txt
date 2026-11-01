@@ -14,6 +14,7 @@ FetchContent_Declare(Crow
 FetchContent_MakeAvailable(Crow)
 
 find_package(Wt REQUIRED COMPONENTS Wt HTTP)
+find_package(SQLite3 REQUIRED)
 
 add_executable(crow_api 
     backend/main.cpp
@@ -21,6 +22,10 @@ add_executable(crow_api
     backend/TaskRepository.cpp
 )
 target_link_libraries(crow_api PRIVATE Crow::Crow)
+
+target_link_libraries(crow_api PRIVATE
+    SQLite::SQLite3
+)
 
 add_executable(wt_ui 
     frontend/main.cpp

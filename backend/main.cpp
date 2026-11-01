@@ -6,7 +6,7 @@ int main()
 {
     crow::SimpleApp app;
     GreetingService greetingService;
-    TaskRepository taskRepository;
+    TaskRepository taskRepository("data/tasks.db");
 
     CROW_ROUTE(app, "/api/hello")([&greetingService](const crow::request &req)
                                   {
