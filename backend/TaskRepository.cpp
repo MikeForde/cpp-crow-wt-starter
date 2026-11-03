@@ -249,8 +249,7 @@ bool TaskRepository::deleteTask(int id)
 
     auto stmt = prepare(
         db_,
-        "DELETE FROM tasks WHERE id = ?"
-    );
+        "DELETE FROM tasks WHERE id = ?");
 
     sqlite3_bind_int(stmt.get(), 1, id);
 

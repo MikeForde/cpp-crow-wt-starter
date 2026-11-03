@@ -2,7 +2,8 @@
 
 #include <string>
 
-class GreetingService {
-    public:
-        std::string greet(const std::string& name) const;
+class GreetingService
+{
+public:
+    std::string greet(const std::string &name) const;
 };
