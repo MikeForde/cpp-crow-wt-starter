@@ -1,4 +1,9 @@
 {
+    "workbench.panel.defaultLocation": "bottom",
+
+    "terminalSessions.layout.autoEnableEverywhere": false,
+    "terminalSessions.layout.autoEnable": false,
+
     "terminalSessions.instanceProfiles": [
         {
             "name": "build",
