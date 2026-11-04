@@ -1,8 +1,7 @@
 #pragma once
 
+#include "Database.h"
 #include "Task.h"
-
-#include <sqlite3.h>
 
 #include <mutex>
 #include <string>
@@ -14,11 +13,9 @@ class TaskRepository
 public:
     explicit TaskRepository(const std::string& dbPath);
 
-    ~TaskRepository();
-
     // Prevent copying the repository
-    TaskRepository(const TaskRepository&) = delete;
-    TaskRepository& operator=(const TaskRepository&) = delete;
+    // TaskRepository(const TaskRepository&) = delete;
+    // TaskRepository& operator=(const TaskRepository&) = delete;
 
     Task addTask(const std::string &title);
 
@@ -33,7 +30,6 @@ public:
 private:
     void createSchema();
 
-    sqlite3* db_ = nullptr;
-
     mutable std::mutex mutex_;
+    mutable Database database_;
 };

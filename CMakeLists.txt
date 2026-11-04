@@ -20,10 +20,13 @@ add_executable(crow_api
     backend/main.cpp
     backend/GreetingService.cpp
     backend/TaskRepository.cpp
+    backend/Database.cpp
+    backend/Statement.cpp
+    backend/Transaction.cpp
 )
-target_link_libraries(crow_api PRIVATE Crow::Crow)
 
 target_link_libraries(crow_api PRIVATE
+    Crow::Crow
     SQLite::SQLite3
 )
 
