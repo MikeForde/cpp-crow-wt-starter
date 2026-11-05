@@ -2,20 +2,22 @@
 
 #include "TaskRepository.h"
 
-TEST_CASE("A new repository contains no tasks", "[TaskRepository]"){
-    TaskRepository repo(":memory:");
+class TaskRepositoryFixture {
+    protected:
+        TaskRepository repo{":memory:"};
+};
+
+TEST_CASE_METHOD(TaskRepositoryFixture, "A new repository contains no tasks", "[TaskRepository]"){
 
     const auto tasks = repo.getAllTasks();
 
     REQUIRE(tasks.empty());
 }
 
-TEST_CASE("A task can be created",
+TEST_CASE_METHOD(TaskRepositoryFixture, "A task can be created",
           "[TaskRepository]") {
 
-    TaskRepository repository(":memory:");
-
-    const Task task = repository.addTask("Learn Catch2");
+    const Task task = repo.addTask("Learn Catch2");
 
     REQUIRE(task.id > 0);
     REQUIRE(task.title == "Learn Catch2");
