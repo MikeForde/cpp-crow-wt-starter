@@ -24,6 +24,38 @@ TEST_CASE_METHOD(TaskRepositoryFixture, "A task can be created",
     REQUIRE(task.completed == false);
 }
 
+TEST_CASE_METHOD(TaskRepositoryFixture,
+                 "Tasks can be updated",
+                 "[TaskRepository]")
+{
+    const Task task = repo.addTask("Learn C++");
+
+    SECTION("A task can be marked completed")
+    {
+        const auto updated = repo.updateTask(task.id, true);
+
+        REQUIRE(updated.has_value());
+        CHECK(updated->completed == true);
+    }
+
+    SECTION("A task can be marked incomplete")
+    {
+        repo.updateTask(task.id, true);
+
+        const auto updated = repo.updateTask(task.id, false);
+
+        REQUIRE(updated.has_value());
+        CHECK(updated->completed == false);
+    }
+
+    SECTION("Updating a nonexistent task returns nullopt")
+    {
+        const auto updated = repo.updateTask(999, true);
+
+        CHECK_FALSE(updated.has_value());
+    }
+}
+
 TEST_CASE("Tasks can be retrieved",
           "[TaskRepository]") {
 
@@ -101,4 +133,6 @@ TEST_CASE("Deleting a nonexistent task returns false",
 
     REQUIRE(deleted == false);
 }
+
+
 
